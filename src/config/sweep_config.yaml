@@ -1,0 +1,30 @@
+method: bayes
+name: 'Adam_BN'
+metric:
+  name: val loss
+  goal: minimize
+parameters:
+  num_blocks:
+    distribution: constant
+    value: 2
+  num_features:
+    distribution: constant
+    value: 64
+  lr:
+    min: 0.000000001
+    max: 0.000001
+  weight_decay:
+    min: 0.0000001
+    max: 0.001
+  optimizer:
+    distribution: constant
+    value: Adam
+  batch_normalization:
+    distribution: constant
+    value: True
+  epochs:
+    distribution: constant
+    value: 200
+  batch_size:
+    distribution: constant
+    value: 16
