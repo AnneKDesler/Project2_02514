@@ -7,14 +7,12 @@ from src.model import Model
 
 def train(config=None, checkpoint_callbacks=None):
     with wandb.init(config=config, 
-                    project="project1_02514",
+                    project="project2_02514",
                     entity="chrillebon",):
         # If called by wandb.agent, as below,
         # this config will be set by Sweep Controller
         config = wandb.config
 
-        num_blocks = int(wandb.config.num_blocks)
-        num_features = int(wandb.config.num_features)
         lr = wandb.config.lr
         weight_decay = wandb.config.weight_decay
         epochs = wandb.config.epochs
@@ -24,8 +22,6 @@ def train(config=None, checkpoint_callbacks=None):
 
         device = 0
         model = Model(
-            num_blocks=num_blocks,
-            num_features=num_features,
             lr=lr,
             weight_decay=weight_decay,
             batch_size=batch_size,
@@ -34,7 +30,7 @@ def train(config=None, checkpoint_callbacks=None):
         )
 
         wandb.watch(model, log_freq=1)
-        logger = pl.loggers.WandbLogger(project="project1_02514", entity="chrillebon")
+        logger = pl.loggers.WandbLogger(project="project2_02514", entity="chrillebon")
 
         trainloader, valloader, _ = get_dataloaders(batch_size=batch_size)
 

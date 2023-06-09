@@ -9,7 +9,6 @@ from torch.nn import functional as F
 class Model(pl.LightningModule):
     def __init__(
         self,
-        num_classes: int = 2,
         lr: Optional[float] = 1e-3,
         weight_decay: Optional[float] = 0,
         batch_size: Optional[int] = 1,
@@ -19,7 +18,7 @@ class Model(pl.LightningModule):
         **kwargs
     ) -> None:
         super(Model, self).__init__(*args, **kwargs)
-
+        print("hello")
         # encoder (downsampling)
         self.enc_conv0 = nn.Sequential(nn.Conv2d(3, 64, 3, stride=1, padding=1),
                                        nn.Conv2d(64, 64, 3, stride=1, padding=1))
@@ -61,10 +60,10 @@ class Model(pl.LightningModule):
         
         self.dec_conv3 = nn.Sequential(nn.Conv2d(128, 64, 3, stride=1, padding=1),
                                        nn.Conv2d(64, 64, 3, stride=1, padding=1),
-                                       nn.Conv2d(64, num_classes, 3, stride=1, padding=1))
+                                       nn.Conv2d(64, 1, 3, stride=1, padding=1))
         self.lr = lr
         self.batch_size = batch_size
-        self.loss = torch.nn.CrossEntropyLoss()
+        self.loss = torch.nn.BCELoss()
         if optimizer is None or optimizer == "Adam":
             self.optimizer = torch.optim.Adam(
                 self.parameters(), lr=self.lr, weight_decay=weight_decay
@@ -76,7 +75,6 @@ class Model(pl.LightningModule):
         """
         https://huggingface.co/docs/transformers/model_doc/t5#inference
         """
-
         # encoder
         e0 = F.relu(self.enc_conv0(x))
         e0_down = self.downsample0(e0)
@@ -91,6 +89,7 @@ class Model(pl.LightningModule):
         b = F.relu(self.bottleneck_conv(e3_down))
         # decoder
         b = self.upsample0(b)
+
         b = torch.cat((b, e3), dim=1)  # skip-connection
         d0 = F.relu(self.dec_conv0(b))
 
