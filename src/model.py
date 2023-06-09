@@ -218,6 +218,16 @@ class DilatedNet(pl.LightningModule):
         self.dec_conv2 = nn.ConvTranspose2d(64, 64, 3, dilation=2)
         self.dec_conv2 = nn.ConvTranspose2d(64, 1, 3, dilation=1)
 
+        self.lr = lr
+        self.batch_size = batch_size
+        self.loss = torch.nn.CrossEntropyLoss()
+        if optimizer is None or optimizer == "Adam":
+            self.optimizer = torch.optim.Adam(
+                self.parameters(), lr=self.lr, weight_decay=weight_decay
+            )
+        if optimizer == "SGD":
+            self.optimizer = torch.optim.SGD(self.parameters(), lr=self.lr)
+
     def forward(self, x):
         # encoder
         e0 = F.relu(self.enc_conv0(x))
