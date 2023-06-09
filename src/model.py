@@ -156,8 +156,8 @@ class Model(pl.LightningModule):
 
     def metrics(self, preds, target):
         # Dice
-        X = target
-        Y = torch.sigmoid(preds)
+        X = (target-torch.mean(target))/torch.std(target) > 0.5
+        Y = torch.sigmoid(preds) > 0.5
         dice = 2*torch.mean(torch.mul(X,Y))/torch.mean(X+Y)
 
         # Intersection over Union
