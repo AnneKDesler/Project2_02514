@@ -190,9 +190,18 @@ class Model(pl.LightningModule):
 
 
 
-class DilatedNet(nn.Module):
-    def __init__(self):
-        super().__init__()
+class DilatedNet(pl.LightningModule):
+    def __init__(
+        self,
+        num_classes: int = 2,
+        lr: Optional[float] = 1e-3,
+        weight_decay: Optional[float] = 0,
+        batch_size: Optional[int] = 1,
+        optimizer: Optional[str] = None,
+        *args,
+        **kwargs
+    ) -> None:
+        super(DilatedNet, self).__init__(*args, **kwargs)
 
         # encoder (downsampling)
         self.enc_conv0 = nn.Conv2d(3, 64, 3, dilation=1)
