@@ -154,7 +154,26 @@ class Model(pl.LightningModule):
     def configure_optimizers(self) -> torch.optim.Optimizer:
         return self.optimizer
 
-    def accuracy(self, preds, target):
-        return (preds == target).sum() / len(target)
-    
-    
+    def metrics(self, preds, target):
+        # Dice
+        X = (target-torch.mean(target))/torch.std(target) > 0.5
+        Y = torch.sigmoid(preds) > 0.5
+        dice = 2*torch.mean(torch.mul(X,Y))/torch.mean(X+Y)
+
+        # Intersection over Union
+        IoU = torch.mean(torch.mul(X,Y))/(torch.mean(X+Y)-torch.mean(torch.mul(X,Y)))
+
+        # Accuracy
+        accuracy =  (preds == target).sum() / len(target)
+
+        TP = (preds == target == 1).sum()
+        FP = (preds != target == 0).sum()
+        TN = (preds == target == 0).sum()
+        FN = (preds != target == 1).sum()
+        # Sensitivity
+        sensitivity = TP/(TP+FN)
+
+        # Specificity
+        specificity = TN/(TN+FP)
+
+        return dice, IoU, accuracy, sensitivity, specificity
