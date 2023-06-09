@@ -1,0 +1,14 @@
+numpy
+jupyter
+matplotlib
+torch
+torchvision
+tqdm
+pytorch-lightning
+wandb
+
+# Following to get plotting to work with jupyter using gpu
+jupyter-client<8
+pyzmq<25
+
+-e .

@@ -1,1 +1,7 @@
-data/
+/data/
+*.egg-info
+wandb/
+*__pycache__
+lightning_logs/
+
+models/
