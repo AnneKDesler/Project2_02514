@@ -6,6 +6,8 @@ import os
 from src import _DATA_PATH
 import numpy as np
 import PIL.Image as Image
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 
 data_path = '/dtu/datasets1/02514/phc_data'
@@ -48,37 +50,41 @@ class PH2(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         'Generates one sample of data'
         image_path = self.image_paths[idx]
-        label_path = self.label_paths[idx]
+        mask_path = self.label_paths[idx]
         
-        image = Image.open(image_path)
-        label = Image.open(label_path)
-        Y = self.transform(label)
-        X = self.transform(image)
+        image = np.array(Image.open(image_path), dtype=np.uint8)
+        mask = np.array(Image.open(mask_path), dtype=np.uint8)
+        
+        transformed = self.transform(image=image, mask=mask)
+        X = transformed["image"]
+        Y = transformed["mask"]
         return X, Y
 
 
 def get_dataloaders(batch_size, num_workers=8, seed=42, data_path="/dtu/datasets1/02514/PH2_Dataset_images"):
-    data_transform = transforms.Compose(
+    
+    data_transform_val = A.Compose(
         [
-            transforms.ToTensor(),
-            transforms.Normalize(mean=0.5, std=0.5),
-            transforms.CenterCrop((572, 764))
-            # transforms.Resize((128, 128), antialias=None)
+            A.Normalize(mean=0.5, std=0.5),
+            A.CenterCrop(570, 760),
+            ToTensorV2(),
         ]
     )
-    data_transform_augment = transforms.Compose(
+    data_transform_train = A.Compose(
         [
-            data_transform,
-            # transforms.RandomRotation(90),
-            # transforms.RandomVerticalFlip(p=0.5),
-            transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
-            # transforms.GaussianBlur(kernel_size=5),
+            A.Normalize(mean=0.5, std=0.5),
+            A.CenterCrop(570, 760),
+            A.Rotate(limit=45, p=1.0),
+            A.VerticalFlip(p=0.5),
+            A.GridDistortion(p=1.0),
+            A.ColorJitter(brightness=0.05, contrast=0.05, saturation=0.05, hue=0.05, p=1.0),
+            ToTensorV2(),
         ]
     )
     
-    trainset = PH2("train", data_transform_augment, seed=seed, data_path=data_path)
-    valset = PH2("val", data_transform, seed=seed, data_path=data_path)
-    testset = PH2("test", data_transform, seed=seed, data_path=data_path)
+    trainset = PH2("train", data_transform_train, seed=seed, data_path=data_path)
+    valset = PH2("val", data_transform_val, seed=seed, data_path=data_path)
+    testset = PH2("test", data_transform_val, seed=seed, data_path=data_path)
     
     trainloader = DataLoader(
         trainset, batch_size=batch_size, num_workers=num_workers, shuffle=False
@@ -95,6 +101,7 @@ def get_dataloaders(batch_size, num_workers=8, seed=42, data_path="/dtu/datasets
 
 if __name__ == "__main__":
     
+    torch.manual_seed(41)
     trainloader,valloader,testloader = get_dataloaders(batch_size=1)
     
     print(f"Lengths of train, val, test are: {len(trainloader)}, {len(valloader)}, {len(testloader)}")
@@ -105,14 +112,14 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     
     img, target = list(trainloader)[0]
-    img, target = img.numpy().squeeze().transpose((1,2,0)), target.numpy().squeeze()
+    img, target = img.numpy().transpose((0,3,2,1)).squeeze(), target.numpy().transpose((2,1,0)).squeeze()
     plt.figure()
     plt.imshow(img)
     plt.colorbar()
     plt.savefig("Testing_PH2_img.png")
     plt.show()
     plt.figure()
-    plt.imshow(target.squeeze())
+    plt.imshow(target)
     plt.colorbar()
     plt.savefig("Testing_PH2_target.png")
     plt.show(block=True)

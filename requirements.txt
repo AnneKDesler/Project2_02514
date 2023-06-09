@@ -6,6 +6,7 @@ torchvision
 tqdm
 pytorch-lightning
 wandb
+albumentations
 
 # Following to get plotting to work with jupyter using gpu
 jupyter-client<8
