@@ -3,6 +3,7 @@ import wandb
 from pytorch_lightning.callbacks import ModelCheckpoint
 from src.load_data import get_dataloaders
 from src.model import Model
+from src.model import DilatedNet
 
 
 def train(config=None, checkpoint_callbacks=None):
@@ -23,6 +24,7 @@ def train(config=None, checkpoint_callbacks=None):
         optimizer = wandb.config.optimizer
 
         device = 0
+        """
         model = Model(
             num_blocks=num_blocks,
             num_features=num_features,
@@ -30,6 +32,14 @@ def train(config=None, checkpoint_callbacks=None):
             weight_decay=weight_decay,
             batch_size=batch_size,
             batch_normalization=batch_normalization,
+            optimizer=optimizer,
+        )
+        """
+        model = DilatedNet(
+            num_features=num_features,
+            lr=lr,
+            weight_decay=weight_decay,
+            batch_size=batch_size,
             optimizer=optimizer,
         )
 
