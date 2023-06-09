@@ -10,10 +10,9 @@ from albumentations.pytorch import ToTensorV2
 import cv2
 
 class DRIVE(torch.utils.data.Dataset):
-    def __init__(self, train, transform, data_path='/dtu/datasets1/02514/DRIVE/'):
+    def __init__(self, train, transform, data_path='/dtu/datasets1/02514/DRIVE/training'):
         'Initialization'
         self.transform = transform
-        data_path = os.path.join(data_path, 'training' if train else 'test')
         self.image_paths = sorted(glob.glob(data_path + '/images/*.tif'))
         self.mask_paths = sorted(glob.glob(data_path + '/mask/*.gif'))
         self.manual_paths = sorted(glob.glob(data_path + '/1st_manual/*.gif'))
@@ -39,10 +38,12 @@ class DRIVE(torch.utils.data.Dataset):
         Z = transformed["mask"]
         return X, Y, Z
     
-def get_dataloaders_DRIVE(batch_size, num_workers=8, seed=42, data_path="/dtu/datasets1/02514/DRIVE/"):
+def get_dataloaders_DRIVE(batch_size, num_workers=3, seed=42, data_path="/dtu/datasets1/02514/DRIVE/training"):
 
     data_transform_val = A.Compose(
         [
+            A.PadIfNeeded(min_height=576, min_width=576),
+            A.CenterCrop(576, 576),
             A.Normalize(mean=0.5, std=0.5),
             ToTensorV2(),
         ],
@@ -50,6 +51,8 @@ def get_dataloaders_DRIVE(batch_size, num_workers=8, seed=42, data_path="/dtu/da
     )
     data_transform_train = A.Compose(
         [
+            A.PadIfNeeded(min_height=576, min_width=576),
+            A.CenterCrop(576, 576),
             A.Normalize(mean=0.5, std=0.5),
             A.Rotate(limit=45, border_mode=cv2.BORDER_CONSTANT, p=1.0),
             A.VerticalFlip(p=0.5),

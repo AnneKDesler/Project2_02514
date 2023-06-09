@@ -3,22 +3,26 @@ import pytorch_lightning as pl
 import torch
 from torch import nn
 from torch.nn import functional as F
+import numpy as np
 
 
 
 class Model(pl.LightningModule):
     def __init__(
         self,
-        num_classes: int = 2,
+        num_classes: int = 1,
         lr: Optional[float] = 1e-3,
         weight_decay: Optional[float] = 0,
         batch_size: Optional[int] = 1,
         batch_normalization: Optional[bool] = False,
         optimizer: Optional[str] = None,
+        target_mask_supplied: Optional[bool]=False,
         *args,
         **kwargs
     ) -> None:
         super(Model, self).__init__(*args, **kwargs)
+        
+        self.target_mask_supplied = target_mask_supplied
 
         # encoder (downsampling)
         self.enc_conv0 = nn.Sequential(nn.Conv2d(3, 64, 3, stride=1, padding=1),
@@ -116,9 +120,13 @@ class Model(pl.LightningModule):
         """
         From https://huggingface.co/docs/transformers/model_doc/t5#training
         """
-
-        data, target = batch
+        if self.target_mask_supplied:
+            data, target, mask = batch
+        else:
+            data, target = batch
         output = self(data)
+        if self.target_mask_supplied:
+            output *= mask[:,None,:,:]
         output, target = output.flatten(), target.flatten()
         preds = torch.round(output)
         _,_,accuracy,_,_ = self.metrics(preds, target)
@@ -156,7 +164,7 @@ class Model(pl.LightningModule):
 
     def metrics(self, preds, target):
         # Dice
-        X = (target-torch.mean(target))/torch.std(target) > 0.5
+        X = target/255
         Y = torch.sigmoid(preds) > 0.5
         dice = 2*torch.mean(torch.mul(X,Y))/torch.mean(X+Y)
 
@@ -164,12 +172,12 @@ class Model(pl.LightningModule):
         IoU = torch.mean(torch.mul(X,Y))/(torch.mean(X+Y)-torch.mean(torch.mul(X,Y)))
 
         # Accuracy
-        accuracy =  (preds == target).sum() / len(target)
+        accuracy =  torch.logical_and(Y, X).sum() / len(X)
 
-        TP = (preds == target == 1).sum()
-        FP = (preds != target == 0).sum()
-        TN = (preds == target == 0).sum()
-        FN = (preds != target == 1).sum()
+        TP = torch.logical_and(Y, X).sum() #(preds == target == 1).sum()
+        FP = torch.logical_not(torch.logical_and(torch.logical_not(Y), X)).sum()# (preds != target == 0).sum()
+        TN = torch.logical_not(torch.logical_and(Y, X)).sum() # (preds == target == 0).sum()
+        FN = torch.logical_and(torch.logical_not(Y), X).sum() # (preds != target == 1).sum()
         # Sensitivity
         sensitivity = TP/(TP+FN)
 

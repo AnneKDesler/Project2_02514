@@ -42,7 +42,7 @@ def train_DilatedNet(config=None, checkpoint_callbacks=None):
             optimizer=optimizer,
         )
 
-        wandb.watch(model, log_freq=1)
+        wandb.watch(model, log=None, log_freq=1)
         logger = pl.loggers.WandbLogger(project="project1_02514", entity="chrillebon")
 
         trainloader, valloader, _ = get_dataloaders(batch_size=batch_size)
@@ -61,6 +61,7 @@ def train_DilatedNet(config=None, checkpoint_callbacks=None):
             devices=[device],
             strategy="ddp",
             logger=logger,
+            log_every_n_steps=1,
         )
 
         trainer.fit(
@@ -79,7 +80,6 @@ def train_UNet(config=None, checkpoint_callbacks=None):
         # this config will be set by Sweep Controller
         config = wandb.config
 
-        num_blocks = int(wandb.config.num_classes)
         lr = wandb.config.lr
         weight_decay = wandb.config.weight_decay
         epochs = wandb.config.epochs
@@ -90,12 +90,12 @@ def train_UNet(config=None, checkpoint_callbacks=None):
         device = 0
        
         model = Model(
-            num_classes=num_blocks,
             lr=lr,
             weight_decay=weight_decay,
             batch_size=batch_size,
             batch_normalization=batch_normalization,
             optimizer=optimizer,
+            target_mask_supplied=True,
         )
         '''
         model = DilatedNet(
@@ -106,10 +106,10 @@ def train_UNet(config=None, checkpoint_callbacks=None):
             optimizer=optimizer,
         )
         '''
-        wandb.watch(model, log_freq=1)
+        wandb.watch(model, log=None, log_freq=1)
         logger = pl.loggers.WandbLogger(project="project2_02514", entity="chrillebon")
 
-        trainloader, valloader,_ = get_dataloaders_PH2(batch_size=batch_size)
+        trainloader, valloader,_ = get_dataloaders_DRIVE(batch_size=batch_size)
 
         # make sure no models are saved if no checkpoints are given
         if checkpoint_callbacks is None:
@@ -125,6 +125,7 @@ def train_UNet(config=None, checkpoint_callbacks=None):
             devices=[device],
             strategy="ddp",
             logger=logger,
+            log_every_n_steps=1,
         )
 
         trainer.fit(
