@@ -73,7 +73,7 @@ eval:
 
 ## Running a sweep over parameters in the 'config/sweep_config.yaml' file. Possible argument is CUDA_NUM=X, where X in {0,1}
 sweep:
-	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/sweep.py
+	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/sweep_DilatedNet.py
 
 ## Human readable instructions to be used before any other commands work
 get_started:

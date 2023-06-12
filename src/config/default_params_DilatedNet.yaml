@@ -1,9 +1,9 @@
 lr:
-  value: 0.01
+  value: 0.0004416
 weight_decay:
-  value: 0.01
+  value: 0.03669
 epochs:
-  value: 10
+  value: 100
 batch_size:
   value: 4
 optimizer:

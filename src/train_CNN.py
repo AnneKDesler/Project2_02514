@@ -7,7 +7,7 @@ from src.model import DilatedNet
 
 def train(config=None, checkpoint_callbacks=None):
     with wandb.init(config=config, 
-                    project="project1_02514",
+                    project="project2_02514",
                     entity="chrillebon",):
         # If called by wandb.agent, as below,
         # this config will be set by Sweep Controller
@@ -27,7 +27,7 @@ def train(config=None, checkpoint_callbacks=None):
         )
 
         wandb.watch(model, log_freq=1)
-        logger = pl.loggers.WandbLogger(project="project1_02514", entity="chrillebon")
+        logger = pl.loggers.WandbLogger(project="project2_02514", entity="chrillebon")
 
         trainloader, valloader, _ = get_dataloaders_PH2(batch_size=batch_size)
 

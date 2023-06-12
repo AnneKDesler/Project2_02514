@@ -153,8 +153,6 @@ class Model(pl.LightningModule):
         output = self(data)
         if self.target_mask_supplied:
             output *= mask[:,None,:,:]
-
-        output, target = output.flatten(), target.flatten()
         
         target = target.to(torch.float32)
 
@@ -202,13 +200,14 @@ class Model(pl.LightningModule):
         # Intersection over Union
         IoU = torch.mean(torch.mul(X,Y))/(torch.mean(X+Y)-torch.mean(torch.mul(X,Y)))
 
-        # Accuracy
-        accuracy =  torch.logical_and(Y, X).sum() / len(X)
-
         TP = torch.logical_and(Y, X).sum() #(preds == target == 1).sum()
         FP = torch.logical_not(torch.logical_and(torch.logical_not(Y), X)).sum()# (preds != target == 0).sum()
         TN = torch.logical_not(torch.logical_and(Y, X)).sum() # (preds == target == 0).sum()
         FN = torch.logical_and(torch.logical_not(Y), X).sum() # (preds != target == 1).sum()
+        
+        # Accuracy
+        accuracy =  (TP+TN)/(TP+FP+TN+FN)
+        
         # Sensitivity
         sensitivity = TP/(TP+FN)
 
@@ -337,13 +336,14 @@ class DilatedNet(pl.LightningModule):
         # Intersection over Union
         IoU = torch.mean(torch.mul(X,Y))/(torch.mean(X+Y)-torch.mean(torch.mul(X,Y)))
 
+        TP = torch.logical_and(Y, X).sum()
+        FP = torch.logical_not(torch.logical_and(torch.logical_not(Y), X)).sum()
+        TN = torch.logical_not(torch.logical_and(Y, X)).sum()
+        FN = torch.logical_and(torch.logical_not(Y), X).sum()
+        
         # Accuracy
-        accuracy =  torch.logical_and(Y, X).sum() / X.numel()
-
-        TP = torch.logical_and(Y, X).sum() #(preds == target == 1).sum()
-        FP = torch.logical_not(torch.logical_and(torch.logical_not(Y), X)).sum()# (preds != target == 0).sum()
-        TN = torch.logical_not(torch.logical_and(Y, X)).sum() # (preds == target == 0).sum()
-        FN = torch.logical_and(torch.logical_not(Y), X).sum() # (preds != target == 1).sum()
+        accuracy =  (TP+TN)/(TP+FP+TN+FN)
+        
         # Sensitivity
         sensitivity = TP/(TP+FN)
 
