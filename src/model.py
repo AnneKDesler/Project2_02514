@@ -159,7 +159,6 @@ class Model(pl.LightningModule):
             output *= mask[:,None,:,:]
 
         output, target = output, target
-        #print(output.shape, target.shape)
         output = output[:,0,:,:]
         target = target.to(torch.float32)
         _,iou,accuracy,_,specificity = self.metrics(output, target)
@@ -220,28 +219,18 @@ class Model(pl.LightningModule):
         # Intersection over Union
         IoU = torch.mean(torch.mul(X,Y))/(torch.mean(X+Y)-torch.mean(torch.mul(X,Y)))
 
-        
-        TP = torch.logical_and(Y, X).sum() #(preds == target == 1).sum()
-        FP = torch.logical_not(torch.logical_and(torch.logical_not(Y), X)).sum()# (preds != target == 0).sum()
-        TN = torch.logical_not(torch.logical_and(Y, X)).sum() # (preds == target == 0).sum()
-        FN = torch.logical_and(torch.logical_not(Y), X).sum() # (preds != target == 1).sum()
-        
-        # Accuracy
-        accuracy =  (TP+TN)/ len(X)
         X = X.cpu().numpy()
         Y = Y.cpu().numpy()
-        tn, fp, fn, tp = confusion_matrix(X, Y).ravel()
-        accuracy = (tp+tn)/(tp+tn+fp+fn)		
-        
+        TN, FP, FN, TP = confusion_matrix(X, Y).ravel()        
         
         # Accuracy
         accuracy =  (TP+TN)/(TP+FP+TN+FN)
         
         # Sensitivity
-        sensitivity = tp/(tp+fn)
+        sensitivity = TP/(TP+FN)
 
         # Specificity
-        specificity = tn/(tn+fp)
+        specificity = TN/(TN+FP)
 
         return dice, IoU, accuracy, sensitivity, specificity
 
@@ -260,11 +249,12 @@ class Model(pl.LightningModule):
 class DilatedNet(pl.LightningModule):
     def __init__(
         self,
-        num_classes: int = 2,
+        num_classes: int = 1,
         lr: Optional[float] = 1e-3,
         weight_decay: Optional[float] = 0,
         batch_size: Optional[int] = 1,
         optimizer: Optional[str] = None,
+        target_mask_supplied: Optional[bool]=False,
         *args,
         **kwargs
     ) -> None:
@@ -287,7 +277,12 @@ class DilatedNet(pl.LightningModule):
 
         self.lr = lr
         self.batch_size = batch_size
-        self.loss = nn.BCEWithLogitsLoss()
+
+        if num_classes == 1:
+            self.loss = bce_loss
+        else:
+            self.loss = torch.nn.CrossEntropyLoss()
+
         if optimizer is None or optimizer == "Adam":
             self.optimizer = torch.optim.Adam(
                 self.parameters(), lr=self.lr, weight_decay=weight_decay
@@ -318,46 +313,67 @@ class DilatedNet(pl.LightningModule):
         """
         From https://huggingface.co/docs/transformers/model_doc/t5#training
         """
-
-        data, target = batch
-        preds = self(data).squeeze()
-        _,_,accuracy,_,_ = self.metrics(preds, target)
+        if self.target_mask_supplied:
+            data, target, mask = batch
+        else:
+            data, target = batch
+        output = self(data)
+        if self.target_mask_supplied:
+            output *= mask[:,None,:,:]
+            
+        output = output[:,0,:,:]
         target = target.to(torch.float32)
+        _,iou,accuracy,_,specificity = self.metrics(output, target)
 
-        return self.loss(preds, target), accuracy
+        out_img = wandb.Image(
+            output[0,...].cpu().detach().numpy().squeeze(), 
+            caption="Prediction"
+        )
+        out_target = wandb.Image(
+            target[0,...].cpu().detach().numpy().squeeze(), 
+            caption="target"
+        )
+        self.logger.experiment.log({"prediction": [out_img, out_target]})
+
+        return self.loss(output, target), accuracy, specificity, iou
 
     def training_step(
         self, batch: List[str], batch_idx: Optional[int] = None
     ) -> torch.Tensor:
-        loss, accuracy = self._inference_training(batch, batch_idx)
+        loss, accuracy, specificity, iou = self._inference_training(batch, batch_idx)
         self.log("train loss", loss, batch_size=self.batch_size)
         self.log("train accuracy", accuracy, batch_size=self.batch_size)
+        self.log("train specificity", specificity, batch_size=self.batch_size)
+        self.log("train iou", iou, batch_size=self.batch_size)
         return loss
 
     def validation_step(
         self, batch: List[str], batch_idx: Optional[int] = None
     ) -> torch.Tensor:
-        loss, accuracy = self._inference_training(batch, batch_idx)
+        loss, accuracy, specificity, iou = self._inference_training(batch, batch_idx)
         self.log("val loss", loss, batch_size=self.batch_size, sync_dist=True)
         self.log("val accuracy", accuracy, batch_size=self.batch_size, sync_dist=True)
+        self.log("val specificity", specificity, batch_size=self.batch_size, sync_dist=True)
+        self.log("val iou", iou, batch_size=self.batch_size, sync_dist=True)
         return loss
 
     def test_step(
         self, batch: List[str], batch_idx: Optional[int] = None
     ) -> torch.Tensor:
-        loss, accuracy = self._inference_training(batch, batch_idx)
+        loss, accuracy, specificity = self._inference_training(batch, batch_idx)
         self.log("test loss", loss, batch_size=self.batch_size, sync_dist=True)
         self.log("test accuracy", accuracy, batch_size=self.batch_size, sync_dist=True)
-
+        self.log("test specificity", specificity, batch_size=self.batch_size, sync_dist=True)
         return loss
+
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         return self.optimizer
 
     def metrics(self, preds, target):
         # Dice
-        X = target
-        Y = torch.sigmoid(preds) > 0.5
+        X = target.view(-1)
+        Y = torch.sigmoid(preds.view(-1)) > 0.5
 
         Y = Y*1.0
         dice = 2*torch.mean(torch.mul(X,Y))/torch.mean(X+Y)
@@ -365,10 +381,9 @@ class DilatedNet(pl.LightningModule):
         # Intersection over Union
         IoU = torch.mean(torch.mul(X,Y))/(torch.mean(X+Y)-torch.mean(torch.mul(X,Y)))
 
-        TP = torch.logical_and(Y, X).sum()
-        FP = torch.logical_not(torch.logical_and(torch.logical_not(Y), X)).sum()
-        TN = torch.logical_not(torch.logical_and(Y, X)).sum()
-        FN = torch.logical_and(torch.logical_not(Y), X).sum()
+        X = X.cpu().numpy()
+        Y = Y.cpu().numpy()
+        TN, FP, FN, TP = confusion_matrix(X, Y).ravel()     
         
         # Accuracy
         accuracy =  (TP+TN)/(TP+FP+TN+FN)
