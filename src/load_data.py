@@ -40,13 +40,12 @@ class DRIVE(torch.utils.data.Dataset):
         Z = transformed["mask"]
         return X, Y, Z
     
-def get_dataloaders_DRIVE(batch_size, size = 576, num_workers=8, seed=42, data_path="/dtu/datasets1/02514/DRIVE/training"):
+def get_dataloaders_DRIVE(batch_size, num_workers=8, seed=42, data_path="/dtu/datasets1/02514/DRIVE/training"):
 
     data_transform_val = A.Compose(
         [
             A.PadIfNeeded(min_height=576, min_width=576),
             A.CenterCrop(576, 576),
-            A.Resize(size, size),
             A.Normalize(mean=0.5, std=0.5),
             ToTensorV2(),
         ],
@@ -56,7 +55,6 @@ def get_dataloaders_DRIVE(batch_size, size = 576, num_workers=8, seed=42, data_p
         [
             A.PadIfNeeded(min_height=576, min_width=576),
             A.CenterCrop(576, 576),
-            A.Resize(size, size),
             A.Normalize(mean=0.5, std=0.5),
             A.Rotate(limit=45, border_mode=cv2.BORDER_CONSTANT, p=1.0),
             A.VerticalFlip(p=0.5),
@@ -132,21 +130,21 @@ class PH2(torch.utils.data.Dataset):
         return X, Y
 
 
-def get_dataloaders_PH2(batch_size, size = 576, num_workers=8, seed=42, data_path="/dtu/datasets1/02514/PH2_Dataset_images"):
+def get_dataloaders_PH2(batch_size, num_workers=8, seed=42, data_path="/dtu/datasets1/02514/PH2_Dataset_images"):
     
     data_transform_val = A.Compose(
         [
             A.Normalize(mean=0.5, std=0.5),
-            A.CenterCrop(570, 760),
-            A.Resize(size, size),
+            A.PadIfNeeded(min_height=576, min_width=576),
+            A.CenterCrop(576, 576),
             ToTensorV2(),
         ]
     )
     data_transform_train = A.Compose(
         [
             A.Normalize(mean=0.5, std=0.5),
-            A.CenterCrop(570, 760),
-            A.Resize(size, size),
+            A.PadIfNeeded(min_height=576, min_width=576),
+            A.CenterCrop(576, 576),
             A.Rotate(limit=45, p=1.0),
             A.VerticalFlip(p=0.5),
             A.GridDistortion(p=0.75),
