@@ -1,0 +1,24 @@
+method: bayes
+name: 'UNet_Drive'
+metric:
+  name: val loss
+  goal: minimize
+parameters:
+  lr:
+    min: 0.00001
+    max: 0.01
+  weight_decay:
+    min: 0.0000001
+    max: 0.001
+  optimizer:
+    distribution: constant
+    value: Adam
+  batch_normalization:
+    distribution: constant
+    value: True
+  epochs:
+    distribution: constant
+    value: 30
+  batch_size:
+    distribution: constant
+    value: 4

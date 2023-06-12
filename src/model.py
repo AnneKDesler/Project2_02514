@@ -4,8 +4,11 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import numpy as np
+import wandb
+from sklearn.metrics import confusion_matrix
 
-
+def bce_loss(pred, target):	
+    return torch.mean(F.binary_cross_entropy_with_logits(pred, target))
 
 class Model(pl.LightningModule):
     def __init__(
@@ -89,13 +92,14 @@ class Model(pl.LightningModule):
                                        nn.Conv2d(64, num_classes, 1, stride=1))
         self.lr = lr
         self.batch_size = batch_size
+
         if num_classes == 1:
-            self.loss = torch.nn.BCEWithLogitsLoss()
+            self.loss = bce_loss
         else:
             self.loss = torch.nn.CrossEntropyLoss()
 
         if optimizer is None or optimizer == "Adam":
-            self.optimizer = torch.optim.Adam(
+            self.optimizer = torch.optim.AdamW(
                 self.parameters(), lr=self.lr, weight_decay=weight_decay
             )
         if optimizer == "SGD":
@@ -153,36 +157,52 @@ class Model(pl.LightningModule):
         output = self(data)
         if self.target_mask_supplied:
             output *= mask[:,None,:,:]
-        
+
+        output, target = output, target
+        #print(output.shape, target.shape)
+        output = output[:,0,:,:]
         target = target.to(torch.float32)
+        _,iou,accuracy,_,specificity = self.metrics(output, target)
 
-        _,_,accuracy,_,_ = self.metrics(output, target)
+        out_img = wandb.Image(
+            output[0,...].cpu().detach().numpy().squeeze(), 
+            caption="Prediction"
+        )
+        out_target = wandb.Image(
+            target[0,...].cpu().detach().numpy().squeeze(), 
+            caption="target"
+        )
+        self.logger.experiment.log({"prediction": [out_img, out_target]}) #, step = self.logger.experiment.current_trainer_global_step
 
-
-        return self.loss(output, target), accuracy
+        return self.loss(output, target), accuracy, specificity, iou
 
     def training_step(
         self, batch: List[str], batch_idx: Optional[int] = None
     ) -> torch.Tensor:
-        loss, accuracy = self._inference_training(batch, batch_idx)
+        loss, accuracy, specificity, iou = self._inference_training(batch, batch_idx)
         self.log("train loss", loss, batch_size=self.batch_size)
         self.log("train accuracy", accuracy, batch_size=self.batch_size)
+        self.log("train specificity", specificity, batch_size=self.batch_size)
+        self.log("train iou", iou, batch_size=self.batch_size)
         return loss
 
     def validation_step(
         self, batch: List[str], batch_idx: Optional[int] = None
     ) -> torch.Tensor:
-        loss, accuracy = self._inference_training(batch, batch_idx)
+        loss, accuracy, specificity, iou = self._inference_training(batch, batch_idx)
         self.log("val loss", loss, batch_size=self.batch_size, sync_dist=True)
         self.log("val accuracy", accuracy, batch_size=self.batch_size, sync_dist=True)
+        self.log("val specificity", specificity, batch_size=self.batch_size, sync_dist=True)
+        self.log("val iou", iou, batch_size=self.batch_size, sync_dist=True)
         return loss
 
     def test_step(
         self, batch: List[str], batch_idx: Optional[int] = None
     ) -> torch.Tensor:
-        loss, accuracy = self._inference_training(batch, batch_idx)
+        loss, accuracy, specificity = self._inference_training(batch, batch_idx)
         self.log("test loss", loss, batch_size=self.batch_size, sync_dist=True)
         self.log("test accuracy", accuracy, batch_size=self.batch_size, sync_dist=True)
+        self.log("test specificity", specificity, batch_size=self.batch_size, sync_dist=True)
 
         return loss
 
@@ -191,8 +211,8 @@ class Model(pl.LightningModule):
 
     def metrics(self, preds, target):
         # Dice
-        X = target
-        Y = torch.sigmoid(preds) > 0.5
+        X = target.view(-1)
+        Y = torch.sigmoid(preds.view(-1)) > 0.5
 
         Y = Y*1.0
         dice = 2*torch.mean(torch.mul(X,Y))/torch.mean(X+Y)
@@ -200,19 +220,28 @@ class Model(pl.LightningModule):
         # Intersection over Union
         IoU = torch.mean(torch.mul(X,Y))/(torch.mean(X+Y)-torch.mean(torch.mul(X,Y)))
 
+        
         TP = torch.logical_and(Y, X).sum() #(preds == target == 1).sum()
         FP = torch.logical_not(torch.logical_and(torch.logical_not(Y), X)).sum()# (preds != target == 0).sum()
         TN = torch.logical_not(torch.logical_and(Y, X)).sum() # (preds == target == 0).sum()
         FN = torch.logical_and(torch.logical_not(Y), X).sum() # (preds != target == 1).sum()
         
         # Accuracy
+        accuracy =  (TP+TN)/ len(X)
+        X = X.cpu().numpy()
+        Y = Y.cpu().numpy()
+        tn, fp, fn, tp = confusion_matrix(X, Y).ravel()
+        accuracy = (tp+tn)/(tp+tn+fp+fn)		
+        
+        
+        # Accuracy
         accuracy =  (TP+TN)/(TP+FP+TN+FN)
         
         # Sensitivity
-        sensitivity = TP/(TP+FN)
+        sensitivity = tp/(tp+fn)
 
         # Specificity
-        specificity = TN/(TN+FP)
+        specificity = tn/(tn+fp)
 
         return dice, IoU, accuracy, sensitivity, specificity
 
