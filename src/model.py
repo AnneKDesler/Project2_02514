@@ -162,27 +162,38 @@ class Model(pl.LightningModule):
         #print(output.shape, target.shape)
         output = output[:,0,:,:]
         target = target.to(torch.float32)
-        _,_,accuracy,_,specificity = self.metrics(output, target)
+        _,iou,accuracy,_,specificity = self.metrics(output, target)
 
+        out_img = wandb.Image(
+            output[0,...].cpu().detach().numpy().squeeze(), 
+            caption="Prediction"
+        )
+        out_target = wandb.Image(
+            target[0,...].cpu().detach().numpy().squeeze(), 
+            caption="target"
+        )
+        self.logger.experiment.log({"prediction": [out_img, out_target]}) #, step = self.logger.experiment.current_trainer_global_step
 
-        return self.loss(output, target), accuracy, specificity
+        return self.loss(output, target), accuracy, specificity, iou
 
     def training_step(
         self, batch: List[str], batch_idx: Optional[int] = None
     ) -> torch.Tensor:
-        loss, accuracy, specificity = self._inference_training(batch, batch_idx)
+        loss, accuracy, specificity, iou = self._inference_training(batch, batch_idx)
         self.log("train loss", loss, batch_size=self.batch_size)
         self.log("train accuracy", accuracy, batch_size=self.batch_size)
         self.log("train specificity", specificity, batch_size=self.batch_size)
+        self.log("train iou", iou, batch_size=self.batch_size)
         return loss
 
     def validation_step(
         self, batch: List[str], batch_idx: Optional[int] = None
     ) -> torch.Tensor:
-        loss, accuracy, specificity = self._inference_training(batch, batch_idx)
+        loss, accuracy, specificity, iou = self._inference_training(batch, batch_idx)
         self.log("val loss", loss, batch_size=self.batch_size, sync_dist=True)
         self.log("val accuracy", accuracy, batch_size=self.batch_size, sync_dist=True)
         self.log("val specificity", specificity, batch_size=self.batch_size, sync_dist=True)
+        self.log("val iou", iou, batch_size=self.batch_size, sync_dist=True)
         return loss
 
     def test_step(
