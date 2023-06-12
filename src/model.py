@@ -6,6 +6,7 @@ from torch.nn import functional as F
 import numpy as np
 import wandb
 from sklearn.metrics import confusion_matrix
+from src.loss import BinaryFocalLossWithLogits, dice_loss
 
 def bce_loss(pred, target):	
     return torch.mean(F.binary_cross_entropy_with_logits(pred, target))
@@ -94,6 +95,7 @@ class Model(pl.LightningModule):
         self.batch_size = batch_size
 
         if num_classes == 1:
+            # self.loss = BinaryFocalLossWithLogits(alpha=0.25, reduction="mean")
             self.loss = bce_loss
         else:
             self.loss = torch.nn.CrossEntropyLoss()
