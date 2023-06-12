@@ -66,6 +66,8 @@ train_UNet_PH2:
 train_CNN:
 	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/train_CNN.py
 
+sweep_UNet_PH2:
+	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/sweep_UNet_PH2.py
 
 ## Evaluating saved model. Run using "make eval ckpt='path_to.ckpt'" (with quotes). Possible argument is CUDA_NUM=X, where X in {0,1}
 eval:
