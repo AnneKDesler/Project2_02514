@@ -88,7 +88,7 @@ def train_UNet(config=None, checkpoint_callbacks=None):
         optimizer = wandb.config.optimizer
 
         device = 0
-       
+        
         model = Model(
             lr=lr,
             weight_decay=weight_decay,
@@ -97,6 +97,16 @@ def train_UNet(config=None, checkpoint_callbacks=None):
             optimizer=optimizer,
             target_mask_supplied=True,
         )
+    
+        '''
+        model = Model(
+            lr=lr,
+            weight_decay=weight_decay,
+            batch_size=batch_size,
+            batch_normalization=batch_normalization,
+            optimizer=optimizer
+        )
+        '''
         '''
         model = DilatedNet(
             num_features=num_features,
@@ -109,7 +119,8 @@ def train_UNet(config=None, checkpoint_callbacks=None):
         wandb.watch(model, log=None, log_freq=1)
         logger = pl.loggers.WandbLogger(project="project2_02514", entity="chrillebon")
 
-        trainloader, valloader,_ = get_dataloaders_DRIVE(batch_size=batch_size)
+        trainloader, valloader,_ = get_dataloaders_DRIVE(batch_size=batch_size, size=256)#, data_path="data/DRIVE/training")
+        #trainloader, valloader,_ = get_dataloaders_PH2(batch_size=batch_size, size=256, data_path="data/PH2_Dataset_images")
 
         # make sure no models are saved if no checkpoints are given
         if checkpoint_callbacks is None:

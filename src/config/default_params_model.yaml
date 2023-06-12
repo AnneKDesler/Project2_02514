@@ -1,13 +1,13 @@
 num_classes:
-  value: 2
+  value: 1
 lr:
-  value: 0.0000001
+  value: 0.000000001
 weight_decay:
   value: 0.00001
 epochs:
-  value: 1000
+  value: 30
 batch_size:
-  value: 16
+  value: 8
 batch_normalization:
   value: True
 optimizer:

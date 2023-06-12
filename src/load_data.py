@@ -29,7 +29,9 @@ class DRIVE(torch.utils.data.Dataset):
         
         image = np.array(Image.open(image_path),dtype=np.uint8)
         mask = np.array(Image.open(mask_path),dtype=np.uint8)
+        mask = mask//255
         manual = np.array(Image.open(manual_path),dtype=np.uint8)
+        manual = manual//255
         combined = np.concatenate((manual[...,None], mask[...,None]), axis=-1)
         
         transformed = self.transform(image=image, manual=manual, mask=mask)
@@ -38,12 +40,13 @@ class DRIVE(torch.utils.data.Dataset):
         Z = transformed["mask"]
         return X, Y, Z
     
-def get_dataloaders_DRIVE(batch_size, num_workers=3, seed=42, data_path="/dtu/datasets1/02514/DRIVE/training"):
+def get_dataloaders_DRIVE(batch_size, size = 576, num_workers=8, seed=42, data_path="/dtu/datasets1/02514/DRIVE/training"):
 
     data_transform_val = A.Compose(
         [
             A.PadIfNeeded(min_height=576, min_width=576),
             A.CenterCrop(576, 576),
+            A.Resize(size, size),
             A.Normalize(mean=0.5, std=0.5),
             ToTensorV2(),
         ],
@@ -53,6 +56,7 @@ def get_dataloaders_DRIVE(batch_size, num_workers=3, seed=42, data_path="/dtu/da
         [
             A.PadIfNeeded(min_height=576, min_width=576),
             A.CenterCrop(576, 576),
+            A.Resize(size, size),
             A.Normalize(mean=0.5, std=0.5),
             A.Rotate(limit=45, border_mode=cv2.BORDER_CONSTANT, p=1.0),
             A.VerticalFlip(p=0.5),
@@ -63,8 +67,8 @@ def get_dataloaders_DRIVE(batch_size, num_workers=3, seed=42, data_path="/dtu/da
         additional_targets={'manual': 'mask'}
     )
     
-    trainset = DRIVE(train=True, transform=data_transform_train)
-    testset = DRIVE(train=False, transform=data_transform_val)
+    trainset = DRIVE(train=True, transform=data_transform_train, data_path=data_path)
+    testset = DRIVE(train=False, transform=data_transform_val, data_path=data_path)
 
     generator1 = torch.Generator().manual_seed(seed)
     trainset, _, _ = random_split(trainset, [0.5, 0.25, 0.25], generator=generator1)
@@ -128,12 +132,13 @@ class PH2(torch.utils.data.Dataset):
         return X, Y
 
 
-def get_dataloaders_PH2(batch_size, num_workers=8, seed=42, data_path="/dtu/datasets1/02514/PH2_Dataset_images"):
+def get_dataloaders_PH2(batch_size, size = 576, num_workers=8, seed=42, data_path="/dtu/datasets1/02514/PH2_Dataset_images"):
     
     data_transform_val = A.Compose(
         [
             A.Normalize(mean=0.5, std=0.5),
             A.CenterCrop(570, 760),
+            A.Resize(size, size),
             ToTensorV2(),
         ]
     )
@@ -141,6 +146,7 @@ def get_dataloaders_PH2(batch_size, num_workers=8, seed=42, data_path="/dtu/data
         [
             A.Normalize(mean=0.5, std=0.5),
             A.CenterCrop(570, 760),
+            A.Resize(size, size),
             A.Rotate(limit=45, p=1.0),
             A.VerticalFlip(p=0.5),
             A.GridDistortion(p=0.75),

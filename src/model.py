@@ -26,49 +26,74 @@ class Model(pl.LightningModule):
 
         # encoder (downsampling)
         self.enc_conv0 = nn.Sequential(nn.Conv2d(3, 64, 3, stride=1, padding=1),
-                                       nn.Conv2d(64, 64, 3, stride=1, padding=1))
+                                       nn.ReLU(),
+                                       nn.Conv2d(64, 64, 3, stride=1, padding=1),
+                                       nn.ReLU())
+        
         self.downsample0 = nn.Conv2d(64, 64, 3, stride=2, padding=1)
 
         self.enc_conv1 = nn.Sequential(nn.Conv2d(64, 128, 3, stride=1, padding=1),
-                                       nn.Conv2d(128, 128, 3, stride=1, padding=1))
+                                       nn.ReLU(),
+                                       nn.Conv2d(128, 128, 3, stride=1, padding=1),
+                                       nn.ReLU())
         self.downsample1 = nn.Conv2d(128, 128, 3, stride=2, padding=1)
         
         self.enc_conv2 = nn.Sequential(nn.Conv2d(128, 256, 3, stride=1, padding=1),
-                                       nn.Conv2d(256, 256, 3, stride=1, padding=1))
+                                       nn.ReLU(),
+                                       nn.Conv2d(256, 256, 3, stride=1, padding=1),
+                                       nn.ReLU())
+        
         self.downsample2 = nn.Conv2d(256, 256, 3, stride=2, padding=1)
         
         self.enc_conv3 = nn.Sequential(nn.Conv2d(256, 512, 3, stride=1, padding=1),
-                                       nn.Conv2d(512, 512, 3, stride=1, padding=1))
+                                       nn.ReLU(),
+                                       nn.Conv2d(512, 512, 3, stride=1, padding=1),
+                                       nn.ReLU())
+        
         self.downsample3 = nn.Conv2d(512, 512, 3, stride=2, padding=1)
 
         # bottleneck
         self.bottleneck_conv = nn.Sequential(nn.Conv2d(512, 1024, 3, stride=1, padding=1),
-                                             nn.Conv2d(1024, 1024, 3, stride=1, padding=1))
+                                             nn.ReLU(),
+                                             nn.Conv2d(1024, 1024, 3, stride=1, padding=1),
+                                             nn.ReLU())
 
         # decoder (upsampling)
         self.upsample0 = nn.ConvTranspose2d(1024, 512, 2, stride=2)
         
         self.dec_conv0 = nn.Sequential(nn.Conv2d(1024, 512, 3, stride=1, padding=1),
-                                       nn.Conv2d(512, 512, 3, stride=1, padding=1))
+                                       nn.ReLU(),
+                                       nn.Conv2d(512, 512, 3, stride=1, padding=1),
+                                       nn.ReLU())
         
         self.upsample1 = nn.ConvTranspose2d(512, 256, 2, stride=2)
         
         self.dec_conv1 = nn.Sequential(nn.Conv2d(512, 256, 3, stride=1, padding=1),
-                                       nn.Conv2d(256, 256, 3, stride=1, padding=1))
+                                       nn.ReLU(),
+                                       nn.Conv2d(256, 256, 3, stride=1, padding=1),
+                                       nn.ReLU())
         
         self.upsample2 = nn.ConvTranspose2d(256, 128, 2, stride=2)
         
         self.dec_conv2 = nn.Sequential(nn.Conv2d(256, 128, 3, stride=1, padding=1),
-                                       nn.Conv2d(128, 128, 3, stride=1, padding=1))
+                                       nn.ReLU(),
+                                       nn.Conv2d(128, 128, 3, stride=1, padding=1),
+                                       nn.ReLU())
         
         self.upsample3 = nn.ConvTranspose2d(128, 64, 2, stride=2)
         
         self.dec_conv3 = nn.Sequential(nn.Conv2d(128, 64, 3, stride=1, padding=1),
+                                       nn.ReLU(),
                                        nn.Conv2d(64, 64, 3, stride=1, padding=1),
-                                       nn.Conv2d(64, num_classes, 3, stride=1, padding=1))
+                                       nn.ReLU(),
+                                       nn.Conv2d(64, num_classes, 1, stride=1))
         self.lr = lr
         self.batch_size = batch_size
-        self.loss = torch.nn.CrossEntropyLoss()
+        if num_classes == 1:
+            self.loss = torch.nn.BCEWithLogitsLoss()
+        else:
+            self.loss = torch.nn.CrossEntropyLoss()
+
         if optimizer is None or optimizer == "Adam":
             self.optimizer = torch.optim.Adam(
                 self.parameters(), lr=self.lr, weight_decay=weight_decay
@@ -82,36 +107,37 @@ class Model(pl.LightningModule):
         """
 
         # encoder
-        e0 = F.relu(self.enc_conv0(x))
+        e0 = self.enc_conv0(x)
         e0_down = self.downsample0(e0)
-        e1 = F.relu(self.enc_conv1(e0_down))
+        e1 = self.enc_conv1(e0_down)
         e1_down = self.downsample1(e1)
-        e2 = F.relu(self.enc_conv2(e1_down))
+        e2 = self.enc_conv2(e1_down)
         e2_down = self.downsample2(e2)
-        e3 = F.relu(self.enc_conv3(e2_down))
+        e3 = self.enc_conv3(e2_down)
         e3_down = self.downsample3(e3)
 
         # bottleneck
-        b = F.relu(self.bottleneck_conv(e3_down))
+        b = self.bottleneck_conv(e3_down)
         # decoder
         b = self.upsample0(b)
         b = torch.cat((b, e3), dim=1)  # skip-connection
-        d0 = F.relu(self.dec_conv0(b))
+        d0 = self.dec_conv0(b)
 
         d0 = self.upsample1(d0)
 
         d0 = torch.cat((d0, e2), dim=1)  # skip-connection
-        d1 = F.relu(self.dec_conv1(d0))
+        d1 = self.dec_conv1(d0)
 
         d1 = self.upsample2(d1)
 
         d1 = torch.cat((d1, e1), dim=1)  # skip-connection
-        d2 = F.relu(self.dec_conv2(d1))
+        d2 = self.dec_conv2(d1)
 
         d2 = self.upsample3(d2)
 
         d2 = torch.cat((d2, e0), dim=1)  # skip-connection
         d3 = self.dec_conv3(d2)  # no activation
+        
         return d3
 
     def _inference_training(
@@ -127,10 +153,13 @@ class Model(pl.LightningModule):
         output = self(data)
         if self.target_mask_supplied:
             output *= mask[:,None,:,:]
+
         output, target = output.flatten(), target.flatten()
-        preds = torch.round(output)
-        _,_,accuracy,_,_ = self.metrics(preds, target)
+        
         target = target.to(torch.float32)
+
+        _,_,accuracy,_,_ = self.metrics(output, target)
+
 
         return self.loss(output, target), accuracy
 
@@ -164,8 +193,14 @@ class Model(pl.LightningModule):
 
     def metrics(self, preds, target):
         # Dice
-        X = target/255
+        X = target#/255
+        print(torch.sigmoid(preds).max())
+        print(torch.sigmoid(preds).min())
         Y = torch.sigmoid(preds) > 0.5
+
+        Y = Y*1.0
+        print(X.unique())
+        print(Y.unique())
         dice = 2*torch.mean(torch.mul(X,Y))/torch.mean(X+Y)
 
         # Intersection over Union
@@ -175,6 +210,7 @@ class Model(pl.LightningModule):
         accuracy =  torch.logical_and(Y, X).sum() / len(X)
 
         TP = torch.logical_and(Y, X).sum() #(preds == target == 1).sum()
+        print(TP)
         FP = torch.logical_not(torch.logical_and(torch.logical_not(Y), X)).sum()# (preds != target == 0).sum()
         TN = torch.logical_not(torch.logical_and(Y, X)).sum() # (preds == target == 0).sum()
         FN = torch.logical_and(torch.logical_not(Y), X).sum() # (preds != target == 1).sum()
