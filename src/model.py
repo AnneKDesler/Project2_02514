@@ -193,14 +193,10 @@ class Model(pl.LightningModule):
 
     def metrics(self, preds, target):
         # Dice
-        X = target#/255
-        print(torch.sigmoid(preds).max())
-        print(torch.sigmoid(preds).min())
+        X = target
         Y = torch.sigmoid(preds) > 0.5
 
         Y = Y*1.0
-        print(X.unique())
-        print(Y.unique())
         dice = 2*torch.mean(torch.mul(X,Y))/torch.mean(X+Y)
 
         # Intersection over Union
@@ -210,7 +206,6 @@ class Model(pl.LightningModule):
         accuracy =  torch.logical_and(Y, X).sum() / len(X)
 
         TP = torch.logical_and(Y, X).sum() #(preds == target == 1).sum()
-        print(TP)
         FP = torch.logical_not(torch.logical_and(torch.logical_not(Y), X)).sum()# (preds != target == 0).sum()
         TN = torch.logical_not(torch.logical_and(Y, X)).sum() # (preds == target == 0).sum()
         FN = torch.logical_and(torch.logical_not(Y), X).sum() # (preds != target == 1).sum()

@@ -58,6 +58,10 @@ endif
 train:
 	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/train.py
 
+train_UNet_PH2:
+	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/train_UNet_PH2.py
+
+
 ## Evaluating saved model. Run using "make eval ckpt='path_to.ckpt'" (with quotes). Possible argument is CUDA_NUM=X, where X in {0,1}
 eval:
 	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/eval_model.py --path=$(ckpt)
