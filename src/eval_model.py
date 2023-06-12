@@ -24,7 +24,7 @@ def eval(model_src):
             default_root_dir="",
             accelerator="gpu",
             devices=[0],
-            strategy="ddp",
+            #strategy="ddp",
         )
     else:
         trainer = pl.Trainer(default_root_dir="")
