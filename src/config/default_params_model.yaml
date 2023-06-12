@@ -1,0 +1,14 @@
+num_classes:
+  value: 1
+lr:
+  value: 0.000000001
+weight_decay:
+  value: 0.00001
+epochs:
+  value: 30
+batch_size:
+  value: 8
+batch_normalization:
+  value: True
+optimizer:
+  value: Adam
