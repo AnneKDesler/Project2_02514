@@ -255,11 +255,11 @@ class DilatedNet(pl.LightningModule):
         self.dec_conv0 = nn.ConvTranspose2d(64, 64, 3, dilation=8)
         self.dec_conv1 = nn.ConvTranspose2d(64, 64, 3, dilation=4)
         self.dec_conv2 = nn.ConvTranspose2d(64, 64, 3, dilation=2)
-        self.dec_conv2 = nn.ConvTranspose2d(64, 1, 3, dilation=1)
+        self.dec_conv3 = nn.ConvTranspose2d(64, 1, 3, dilation=1)
 
         self.lr = lr
         self.batch_size = batch_size
-        self.loss = torch.nn.CrossEntropyLoss()
+        self.loss = nn.BCEWithLogitsLoss()
         if optimizer is None or optimizer == "Adam":
             self.optimizer = torch.optim.Adam(
                 self.parameters(), lr=self.lr, weight_decay=weight_decay
@@ -272,7 +272,7 @@ class DilatedNet(pl.LightningModule):
         e0 = F.relu(self.enc_conv0(x))
         e1 = F.relu(self.enc_conv1(e0))
         e2 = F.relu(self.enc_conv2(e1))
-        e3 = F.relu(self.enc_conv2(e2))
+        e3 = F.relu(self.enc_conv3(e2))
 
         # bottleneck
         b = F.relu(self.bottleneck_conv(e3))
@@ -280,8 +280,8 @@ class DilatedNet(pl.LightningModule):
         # decoder
         d0 = F.relu(self.dec_conv0(b))
         d1 = F.relu(self.dec_conv1(d0))
-        d2 = F.relu(self.dec_conv1(d1))
-        d3 = F.softmax(self.dec_conv2(d2))
+        d2 = F.relu(self.dec_conv2(d1))
+        d3 = self.dec_conv3(d2)
         return d3
 
     def _inference_training(
@@ -292,13 +292,11 @@ class DilatedNet(pl.LightningModule):
         """
 
         data, target = batch
-        output = self(data)
-        output, target = output.flatten(), target.flatten()
-        preds = torch.round(output)
+        preds = self(data).squeeze()
         _,_,accuracy,_,_ = self.metrics(preds, target)
         target = target.to(torch.float32)
 
-        return self.loss(output, target), accuracy
+        return self.loss(preds, target), accuracy
 
     def training_step(
         self, batch: List[str], batch_idx: Optional[int] = None
@@ -330,20 +328,22 @@ class DilatedNet(pl.LightningModule):
 
     def metrics(self, preds, target):
         # Dice
-        X = (target-torch.mean(target))/torch.std(target) > 0.5
+        X = target
         Y = torch.sigmoid(preds) > 0.5
+
+        Y = Y*1.0
         dice = 2*torch.mean(torch.mul(X,Y))/torch.mean(X+Y)
 
         # Intersection over Union
         IoU = torch.mean(torch.mul(X,Y))/(torch.mean(X+Y)-torch.mean(torch.mul(X,Y)))
 
         # Accuracy
-        accuracy =  (preds == target).sum() / len(target)
+        accuracy =  torch.logical_and(Y, X).sum() / X.numel()
 
-        TP = (preds == target == 1).sum()
-        FP = (preds != target == 0).sum()
-        TN = (preds == target == 0).sum()
-        FN = (preds != target == 1).sum()
+        TP = torch.logical_and(Y, X).sum() #(preds == target == 1).sum()
+        FP = torch.logical_not(torch.logical_and(torch.logical_not(Y), X)).sum()# (preds != target == 0).sum()
+        TN = torch.logical_not(torch.logical_and(Y, X)).sum() # (preds == target == 0).sum()
+        FN = torch.logical_and(torch.logical_not(Y), X).sum() # (preds != target == 1).sum()
         # Sensitivity
         sensitivity = TP/(TP+FN)
 
