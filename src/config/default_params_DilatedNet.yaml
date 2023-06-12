@@ -1,0 +1,10 @@
+lr:
+  value: 0.01
+weight_decay:
+  value: 0.01
+epochs:
+  value: 10
+batch_size:
+  value: 4
+optimizer:
+  value: Adam

@@ -59,6 +59,6 @@ def train(config=None, checkpoint_callbacks=None):
 if __name__ == "__main__":
     checkpoint_callback = ModelCheckpoint(dirpath="models/Name_of_model", filename="best")
     train(
-        config="src/config/default_params.yaml",
+        config="src/config/default_params_DilatedNet.yaml",
         checkpoint_callbacks=[checkpoint_callback],
     )
