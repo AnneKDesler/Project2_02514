@@ -2,8 +2,9 @@ import argparse
 import pytorch_lightning as pl
 import torch
 import os
-from src.load_data import get_dataloaders
-from src.model import Model
+from src.load_data import get_dataloaders_DRIVE
+from src.load_data import get_dataloaders_PH2
+from src.model import Model, DilatedNet
 
 
 def eval(model_src):
@@ -11,13 +12,20 @@ def eval(model_src):
         model_src = os.path.join("models", model_src)
 
     try:
-        model = Model.load_from_checkpoint(checkpoint_path=model_src)
+        model = DilatedNet.load_from_checkpoint(checkpoint_path=model_src, 
+                                           #target_mask_supplied=True,
+                                            loss="focal"
+        )
     except:
-        model = Model.load_from_checkpoint(
-            checkpoint_path=model_src, batch_normalization=True
+        model = DilatedNet.load_from_checkpoint(
+            checkpoint_path=model_src, 
+            #target_mask_supplied=True,
+            loss="focal"
         )
 
-    trainloader, valloader, testloader = get_dataloaders(batch_size=8)
+    #trainloader, valloader, testloader = get_dataloaders_DRIVE(batch_size=8, data_path="data/DRIVE/training")
+    trainloader, valloader, testloader = get_dataloaders_PH2(batch_size=8, data_path="data/PH2_Dataset_images")
+
 
     if torch.cuda.is_available():
         trainer = pl.Trainer(
@@ -29,9 +37,9 @@ def eval(model_src):
     else:
         trainer = pl.Trainer(default_root_dir="")
     
-    results = trainer.test(model=model, dataloaders=trainloader, verbose=True)
+    #results = trainer.test(model=model, dataloaders=trainloader, verbose=True)
 
-    print(results)
+    #print(results)
 
     results = trainer.test(model=model, dataloaders=valloader, verbose=True)
 
@@ -46,7 +54,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--path",
-        default="epoch=19-step=2560.ckpt",
+        default="UNet_Drive/best.ckpt",
         type=str,
         help="path to ckpt file to evaluate",
     )

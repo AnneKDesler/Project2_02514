@@ -1,11 +1,11 @@
 num_classes:
   value: 1
 lr:
-  value: 0.001
+  value: 0.0001
 weight_decay:
-  value: 0
+  value: 0.001
 epochs:
-  value: 30
+  value: 50
 batch_size:
   value: 4
 batch_normalization:

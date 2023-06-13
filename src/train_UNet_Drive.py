@@ -30,7 +30,8 @@ def train_UNet(config=None, checkpoint_callbacks=None):
             batch_size=batch_size,
             batch_normalization=batch_normalization,
             optimizer=optimizer,
-            target_mask_supplied=True
+            target_mask_supplied=True,
+            loss="focal"
         )
 
         wandb.watch(model, log=None, log_freq=1)
@@ -51,7 +52,6 @@ def train_UNet(config=None, checkpoint_callbacks=None):
             callbacks=checkpoint_callbacks,
             accelerator="gpu",
             devices=[device],
-            strategy="ddp",
             logger=logger,
             log_every_n_steps=1,
         )
@@ -67,7 +67,7 @@ def train_UNet(config=None, checkpoint_callbacks=None):
 
 
 if __name__ == "__main__":
-    checkpoint_callback = ModelCheckpoint(dirpath="models/UNet", filename="best_UNet")
+    checkpoint_callback = ModelCheckpoint(dirpath="models/UNet_Drive_focal", filename="best_UNet")
     train_UNet(
         config="src/config/default_params_UNet_Drive.yaml",
         checkpoint_callbacks=[checkpoint_callback],

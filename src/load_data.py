@@ -158,13 +158,13 @@ def get_dataloaders_PH2(batch_size, num_workers=8, seed=42, data_path="/dtu/data
     testset = PH2("test", data_transform_val, seed=seed, data_path=data_path)
     
     trainloader = DataLoader(
-        trainset, batch_size=batch_size, num_workers=num_workers, shuffle=False
+        trainset, batch_size=batch_size, num_workers=num_workers, shuffle=True
     )
     valloader = DataLoader(
-        valset, batch_size=batch_size, num_workers=num_workers
+        valset, batch_size=batch_size, num_workers=num_workers, shuffle=False
     )
     testloader = DataLoader(
-        testset, batch_size=batch_size, num_workers=num_workers
+        testset, batch_size=batch_size, num_workers=num_workers, shuffle=False
     )
 
     return trainloader, valloader, testloader

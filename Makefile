@@ -66,8 +66,11 @@ train_UNet_Drive:
 	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/train_UNet_Drive.py
 
 ## Running the CNN training script. Possible argument is CUDA_NUM=X, where X in {0,1}
-train_CNN:
-	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/train_CNN.py
+train_CNN_PH2:
+	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/train_CNN_PH2.py
+
+train_CNN_Drive:
+	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/train_CNN_Drive.py
 
 sweep_UNet_PH2:
 	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/sweep_UNet_PH2.py
@@ -78,6 +81,9 @@ sweep_UNet_Drive:
 ## Evaluating saved model. Run using "make eval ckpt='path_to.ckpt'" (with quotes). Possible argument is CUDA_NUM=X, where X in {0,1}
 eval:
 	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/eval_model.py --path=$(ckpt)
+
+predict:
+	CUDA_VISIBLE_DEVICES=$(CUDA_NUM) $(PYTHON_INTERPRETER) src/predict_model.py --path=$(ckpt)
 
 ## Running a sweep over parameters in the 'config/sweep_config.yaml' file. Possible argument is CUDA_NUM=X, where X in {0,1}
 sweep:
